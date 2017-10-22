@@ -1,3 +1,3 @@
 # Braaaddd
 
-g++ src/*.cpp -o tuto -Iinclude -L. -ltcod -ltcodxx -Wl, -Wall
+g++ src/*.cpp -o Braaaddd -Iinclude -L. -ltcod -ltcodxx -Wl, -Wall
