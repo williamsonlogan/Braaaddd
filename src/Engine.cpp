@@ -3,7 +3,7 @@
 
 Engine::Engine(int screenWidth, int screenHeight) : gameStatus(STARTUP),fovRadius(10),
 		screenWidth(screenWidth),screenHeight(screenHeight) {
-		TCODConsole::initRoot(screenWidth,screenHeight,"libtcod C++ tutorial",false);
+		TCODConsole::initRoot(screenWidth,screenHeight,"Braaaddd: The Game",false);
 		player = new Actor(40,25,'@',"player",TCODColor::white);
 		player->destructible=new PlayerDestructible(30,2,"your cadaver");
 		player->attacker=new Attacker(5);
@@ -13,7 +13,7 @@ Engine::Engine(int screenWidth, int screenHeight) : gameStatus(STARTUP),fovRadiu
 		map = new Map(80,43);
 		gui = new Gui();
 		gui->message(TCODColor::red,
-					 "Welcome stranger!\nPrepare to perish in the Tombs of the Ancient Kings.");
+					 "Welcome Braaaddd!\nPrepare to perish in the Tombs of the Ancient Kings.");
 }
 
 Engine::~Engine() {
