@@ -7,33 +7,95 @@ static const int MAX_ROOM_ITEMS = 2;
 
 class BspListener : public ITCODBspCallback {
 private:
-		Map &map;	// a map to dig
-		int roomNum;// room number
-		int lastx,lasty;// center of the last room
+	Map &map;	// a map to dig
+	int roomNum;
 public:
-		BspListener(Map &map) : map(map), roomNum(0) {
+	BspListener(Map &map) : map(map), roomNum(0) {}
+
+	bool visitNode(TCODBsp *node, void *userData) {
+		TCODRandom *rng=TCODRandom::getInstance();
+		if ( node->isLeaf() ) {
+			int x,y,w,h;
+			// dig a room
+			// Create a random width, height, and position
+			w = rng->getInt(ROOM_MIN_SIZE, node->w-2);
+			h = rng->getInt(ROOM_MIN_SIZE, node->h-2);
+			x = rng->getInt(node->x+1, node->x+node->w-w-1);
+			y = rng->getInt(node->y+1, node->y+node->h-h-1);
+
+			// Resize the node to new room dimensions
+			node->x = x;
+			node->y = y;
+			node->w = w;
+			node->h = h;
+
+			// Dig out the room
+			map.createRoom(roomNum == 0, x, y, x+w-1, y+h-1);
+
+			roomNum++;
 		}
-		bool visitNode(TCODBsp *node, void *userData) {
-				if ( node->isLeaf() ) {
-						int x,y,w,h;
-						// dig a room
-						TCODRandom *rng=TCODRandom::getInstance();
-						w=rng->getInt(ROOM_MIN_SIZE, node->w-2);
-						h=rng->getInt(ROOM_MIN_SIZE, node->h-2);
-						x=rng->getInt(node->x+1, node->x+node->w-w-1);
-						y=rng->getInt(node->y+1, node->y+node->h-h-1);
-						map.createRoom(roomNum == 0, x, y, x+w-1, y+h-1);
-						if ( roomNum != 0 ) {
-								// dig a corridor from last room
-								map.dig(lastx,lasty,x+w/2,lasty);
-								map.dig(x+w/2,lasty,x+w/2,y+h/2);
-						}
-						lastx=x+w/2;
-						lasty=y+h/2;
-						roomNum++;
+		else
+		{
+			TCODBsp * left = node->getLeft(),
+				* right = node->getRight();
+
+			node->x = MIN(left->x, right->x);
+			node->y = MIN(left->y, right->y);
+			node->w = MAX(left->w, right->w);
+			node->h = MAX(left->h, right->h);
+
+			if (node->horizontal)
+			{
+				if (left->x + left->w - 1 < right->x ||
+				    right->x + right->w - 1 < left->x)
+				{
+					int x1 = rng->getInt(left->x, left->x + left->w - 1),
+					    x2 = rng->getInt(right->x, right->x + right->w - 1),
+					    y  = rng->getInt(left->y + left->h, right->y);
+
+					map.vline_up(x1, y - 1);
+					map.hline(x1, y, x2);
+					map.vline_down(x2, y + 1);
 				}
-				return true;
+				else
+				{
+					int minX = MAX(left->x, right->x),
+					    maxX = MIN(left->x + left->w - 1, right->x + right->w - 1);
+
+					int x = rng->getInt(minX, maxX);
+
+					map.vline_down(x, right->y);
+					map.vline_up(x, right->y - 1);
+				}
+			}
+			else
+			{
+				if (left->y + left->h - 1 < right->y ||
+				    right->y + right->h - 1 < left->y)
+				{
+					int y1 = rng->getInt(left->y, left->y + left->h - 1),
+					    y2 = rng->getInt(right->y, right->y + right->h - 1),
+					    x  = rng->getInt(left->x + left->h, right->x);
+
+					map.hline_left(x - 1, y1);
+					map.vline(x, y1, y2);
+					map.hline_right(x + 1, y2);
+				}
+				else
+				{
+					int minY = MAX(left->y, right->y),
+					    maxY = MIN(left->y + left->h - 1, right->y + right->h - 1);
+
+					int y = rng->getInt(minY, maxY);
+
+					map.hline_left(right->x - 1, y);
+					map.hline_right(right->x, y);
+				}
+			}
 		}
+
+		return true;
+	}
 };
 
 Map::Map(int width, int height) : width(width),height(height) {
@@ -63,7 +125,7 @@ void Map::dig(int x1, int y1, int x2, int y2) {
 		}
 		for (int tilex=x1; tilex <= x2; tilex++) {
 				for (int tiley=y1; tiley <= y2; tiley++) {
-						map->setProperties(tilex,tiley,true,true);
+					map->setProperties(tilex,tiley,true,true);
 				}
 		}
 }
@@ -212,3 +274,72 @@ void Map::render() const {
 				}
 		}
 }
+
+void Map::vline(int x, int y1, int y2)
+{
+	int y = y1;
+	int dy = (y1 > y2) ? -1 : 1;
+
+	map->setProperties(x, y, true, true);
+	if (y1 == y2)
+		return;
+
+	do
+	{
+		y += dy;
+		map->setProperties(x, y, true, true);
+	} while (y != y2);
+}
+
+void Map::vline_up(int x, int y)
+{
+	while (y >= 0 && !map->isWalkable(x, y))
+	{
+		map->setProperties(x, y, true, true);
+		y--;
+	}
+}
+
+void Map::vline_down(int x, int y)
+{
+	while (y < height && !map->isWalkable(x, y))
+	{
+		map->setProperties(x, y, true, true);
+		y++;
+	}
+}
+
+void Map::hline(int x1, int y, int x2)
+{	
+	int x = x1;
+	int dx = (x1 > x2) ? -1 : 1;
+
+	map->setProperties(x, y, true, true);
+	if (x1 == x2)
+		return;
+
+	do
+	{
+		x += dx;
+		map->setProperties(x, y, true, true);
+	} while (x != x2);
+}
+
+void Map::hline_right(int x, int y)
+{
+	while (x < width && !map->isWalkable(x, y))
+	{
+		map->setProperties(x, y, true, true);
+		x++;
+	}
+}
+
+void Map::hline_left(int x, int y)
+{
+	while (x >= 0 && !map->isWalkable(x,y))
+	{
+		map->setProperties(x, y, true, true);
+		x--;
+	}
+}
+

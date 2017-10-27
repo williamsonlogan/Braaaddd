@@ -22,6 +22,15 @@ protected:
 		friend class BspListener;
 
 		void dig(int x1, int y1, int x2, int y2);
+
+		void vline(int x, int y1, int y2);
+		void vline_up(int x, int y);
+		void vline_down(int x, int y);
+
+		void hline(int x1, int y, int x2);
+		void hline_right(int x, int y);
+		void hline_left(int x, int y);
+
 		void createRoom(bool first, int x1, int y1, int x2, int y2);
 		void addMonster(int x, int y);
 		void addItem(int x, int y);
